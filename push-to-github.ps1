@@ -4,6 +4,7 @@
   用法：双击 push-to-github.cmd；或 push-to-github.cmd -Owner 你的GitHub用户名 -Repo dsh-ecommerce-analysis
   首次运行会询问一次 git 身份（名字/邮箱）和 GitHub 用户名，之后自动记住（存于本仓库 .git/config）。
   推送到 GitHub 时会由 Git Credential Manager 弹出浏览器登录授权（只需一次）。
+  每次运行的完整输出会写入 push-to-github.log，便于排查失败原因。
 #>
 [CmdletBinding()]
 param(
@@ -18,9 +19,13 @@ $OutputEncoding = [Text.UTF8Encoding]::new($false)
 
 Set-Location $PSScriptRoot
 
+$logPath = Join-Path $PWD 'push-to-github.log'
+try { Start-Transcript -Path $logPath -Force | Out-Null } catch {}
+
 function Fail([string]$Message) {
     Write-Host ''
     Write-Host ('✗ ' + $Message) -ForegroundColor Red
+    Write-Host ('  完整日志见：' + $logPath) -ForegroundColor Yellow
     Write-Host ''
     Read-Host '按回车键退出' | Out-Null
     exit 1
@@ -135,20 +140,56 @@ try {
 } catch {
     $pushOut = $_.Exception.Message
 }
+$pushOut = $pushOut -replace "`r", "`n"
+$pushed = $false
 if ($LASTEXITCODE -ne 0) {
     Write-Host $pushOut
     if ($pushOut -match 'Repository not found|does not appear to be a git repository') {
         Write-Host ''
         Write-Host '远端仓库不存在。请先到以下地址创建空仓库（不要勾选 README / .gitignore），然后重新运行：' -ForegroundColor Yellow
         Write-Host ('  https://github.com/new?name=' + $Repo)
-    } elseif ($pushOut -match 'Authentication failed|could not read Username|terminal prompts disabled') {
+    } elseif ($pushOut -match 'Authentication failed|could not read Username|terminal prompts disabled|403') {
         Write-Host ''
-        Write-Host '认证失败。请确认 Git Credential Manager 可用，或配置 Personal Access Token（https://github.com/settings/tokens）。' -ForegroundColor Yellow
-    } elseif ($pushOut -match 'rejected|non-fast-forward|fetch first') {
+        Write-Host '认证失败或权限不足。请确认：' -ForegroundColor Yellow
+        Write-Host '  - Git Credential Manager 已安装并能弹出浏览器登录；'
+        Write-Host '  - 登录的 GitHub 账号就是 ' + $Owner + '（多账号会缓存错账号）。'
+        Write-Host '  可用 Personal Access Token 代替：https://github.com/settings/tokens'
+    } elseif ($pushOut -match 'GH007|private email|email privacy') {
         Write-Host ''
-        Write-Host '远端已有内容，推送被拒绝。本脚本不会强制覆盖；请先同步远端内容，或换一个仓库名重试。' -ForegroundColor Yellow
+        Write-Host 'GitHub 认为提交邮箱是私有邮箱，拒绝发布（GH007）。' -ForegroundColor Yellow
+        Write-Host '  修复：把提交邮箱改成 GitHub 的 noreply 地址：' -ForegroundColor Yellow
+        Write-Host '  1) 打开 https://github.com/settings/emails ，复制 Keep my email private 下显示的邮箱；'
+        Write-Host '  2) git config user.email "<复制的邮箱>"'
+        Write-Host '  3) git commit --amend --reset-author --no-edit'
+        Write-Host '  4) 重新运行本脚本。'
+    } elseif ($pushOut -match 'rejected|non-fast-forward|fetch first|needs merge') {
+        Write-Host ''
+        Write-Host '远端已有内容，推送被拒绝。正在检查远端内容...' -ForegroundColor Yellow
+        git fetch origin main 2>&1 | Out-Null
+        $remoteCommits = 0
+        try { $remoteCommits = [int](git rev-list --count origin/main 2>$null) } catch {}
+        $remoteFiles = @()
+        try { $remoteFiles = @(git ls-tree --name-only origin/main 2>$null) } catch {}
+        $unexpected = @($remoteFiles | Where-Object { $_ -notmatch '^(README(\.md)?|LICENSE|\.gitignore|\.gitattributes)$' })
+        if ($remoteCommits -eq 1 -and $unexpected.Count -eq 0) {
+            Write-Host ('远端只有一个 GitHub 自动生成的 Initial commit（文件：' + ($remoteFiles -join ', ') + '），没有需要保留的内容。') -ForegroundColor Yellow
+            $ans = Read-Host '是否用本地内容覆盖推送？（新建仓库场景推荐 y）[Y/n]'
+            if ($ans -match '^(y|Y|)$') {
+                Info '强制推送，覆盖远端自动生成的 Initial commit...'
+                git push -u origin main --force 2>&1 | Write-Host
+                if ($LASTEXITCODE -eq 0) { $pushed = $true; Ok '已覆盖推送' }
+            }
+        } else {
+            Write-Host '远端已有真实内容，脚本不会强行覆盖。请先同步远端内容，或换一个仓库名重试。' -ForegroundColor Yellow
+        }
+    } elseif ($pushOut -match 'schannel|SEC_E_NO_CREDENTIALS|unable to access|could not resolve') {
+        Write-Host ''
+        Write-Host '与 GitHub 的网络/TLS 连接失败。请检查网络或代理；可尝试在终端里手动运行：' -ForegroundColor Yellow
+        Write-Host '  git push -u origin main'
     }
-    Fail '推送失败（详见上方输出）。修好后重新运行本脚本即可，已提交的改动会保留。'
+    if (-not $pushed) {
+        Fail '推送失败（详见上方输出）。修好后重新运行本脚本即可，已提交的改动会保留。'
+    }
 }
 
 Ok ('推送成功：https://github.com/' + $Owner + '/' + $Repo)
