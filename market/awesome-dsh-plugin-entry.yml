@@ -1,0 +1,13 @@
+# 提交到 awesome-dsh-plugin 的条目模板。
+# 运行 push-to-github.ps1 成功后会自动把 OWNER/REPO 替换为真实值；
+# 也可手动替换。然后把本文件内容放到
+# https://github.com/awesome-dsh-plugin/awesome-dsh-plugin 的
+# data/plugins/OWNER__REPO.yml 并提 PR。
+
+url: https://github.com/OWNER/REPO
+name: OWNER/REPO
+category: skill
+description:
+  en: E-commerce order analysis skill for DSH: refund-type classification, return-rate statistics, interception and refund-abuse loss accounting, with Markdown + Excel reports including per-order detail sheets and a sampling verification list.
+  zh: 电商订单数据分析技能：退款类型分类、退货率统计、拦截件与白嫖损耗核算，输出与 Markdown 同规格的 Excel 报告（含明细订单编号与抽样验证清单）。
+icon: https://raw.githubusercontent.com/OWNER/REPO/main/icon.png

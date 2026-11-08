@@ -1,0 +1,39 @@
+{
+    "name":  "dsh-ecommerce-analysis",
+    "version":  "1.1.0",
+    "type":  "module",
+    "description":  "A DSH skill plugin for e-commerce order analysis: refund-type classification, return-rate statistics, interception and refund-abuse loss accounting, and Markdown + Excel reports with per-order detail and a sampling verification sheet.",
+    "keywords":  [
+                     "dsh-plugin",
+                     "dsh",
+                     "ecommerce",
+                     "e-commerce",
+                     "order-analysis",
+                     "return-rate",
+                     "skill"
+                 ],
+    "license":  "MIT",
+    "repository":  {
+                       "type":  "git",
+                       "url":  "git+https://github.com/jinkuihua/dsh-ecommerce-analysis.git"
+                   },
+    "exports":  {
+                    ".":  "./index.js",
+                    "./locale/*.json":  "./locale/*.json",
+                    "./icon":  "./icon.svg"
+                },
+    "files":  [
+                  "index.js",
+                  "cordis.patch.yml",
+                  "locale/*.json",
+                  "icon.svg",
+                  "icon.png",
+                  "README.md",
+                  "LICENSE"
+              ],
+    "dsh":  {
+                "bundle":  {
+                               "patch":  "./cordis.patch.yml"
+                           }
+            }
+}
