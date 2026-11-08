@@ -136,9 +136,13 @@ if ($DryRun) {
 Info ('推送到 ' + $remoteUrl + ' ...（首次弹出浏览器时请登录 GitHub 授权）')
 $pushOut = ''
 try {
-    $pushOut = (git push -u origin main 2>&1 | Out-String)
+    # 用 cmd /c 包一层：git 的进度/拒绝信息走的是 stderr，PowerShell 5.1 在
+    # ErrorActionPreference=Stop 下会把 stderr 当终止错误，导致只截到第一行就中断。
+    # cmd /c 把 stderr 合并进 stdout，PowerShell 只看到普通文本，$LASTEXITCODE 仍是 git 的退出码。
+    $pushOut = (cmd /c 'git push -u origin main 2>&1' | Out-String)
 } catch {
     $pushOut = $_.Exception.Message
+    if (-not $pushOut) { $pushOut = 'git push 未返回任何输出（网络或凭据问题）' }
 }
 $pushOut = $pushOut -replace "`r", "`n"
 $pushed = $false
@@ -165,18 +169,18 @@ if ($LASTEXITCODE -ne 0) {
     } elseif ($pushOut -match 'rejected|non-fast-forward|fetch first|needs merge') {
         Write-Host ''
         Write-Host '远端已有内容，推送被拒绝。正在检查远端内容...' -ForegroundColor Yellow
-        git fetch origin main 2>&1 | Out-Null
+        cmd /c 'git fetch origin main 2>&1' | Out-Null
         $remoteCommits = 0
-        try { $remoteCommits = [int](git rev-list --count origin/main 2>$null) } catch {}
+        try { $remoteCommits = [int](cmd /c 'git rev-list --count origin/main 2>&1') } catch {}
         $remoteFiles = @()
-        try { $remoteFiles = @(git ls-tree --name-only origin/main 2>$null) } catch {}
+        try { $remoteFiles = @(cmd /c 'git ls-tree --name-only origin/main 2>&1') } catch {}
         $unexpected = @($remoteFiles | Where-Object { $_ -notmatch '^(README(\.md)?|LICENSE|\.gitignore|\.gitattributes)$' })
         if ($remoteCommits -eq 1 -and $unexpected.Count -eq 0) {
             Write-Host ('远端只有一个 GitHub 自动生成的 Initial commit（文件：' + ($remoteFiles -join ', ') + '），没有需要保留的内容。') -ForegroundColor Yellow
             $ans = Read-Host '是否用本地内容覆盖推送？（新建仓库场景推荐 y）[Y/n]'
             if ($ans -match '^(y|Y|)$') {
                 Info '强制推送，覆盖远端自动生成的 Initial commit...'
-                git push -u origin main --force 2>&1 | Write-Host
+                cmd /c 'git push -u origin main --force 2>&1' | Write-Host
                 if ($LASTEXITCODE -eq 0) { $pushed = $true; Ok '已覆盖推送' }
             }
         } else {
