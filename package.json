@@ -15,7 +15,7 @@
     "license":  "MIT",
     "repository":  {
                        "type":  "git",
-                       "url":  "git+https://github.com/jinkuihua/dsh-ecommerce-analysis.git"
+                       "url":  "git+https://github.com/test-owner/dsh-ecommerce-analysis.git"
                    },
     "exports":  {
                     ".":  "./index.js",
