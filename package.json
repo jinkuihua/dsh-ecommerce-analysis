@@ -1,8 +1,8 @@
 {
     "name":  "dsh-ecommerce-analysis",
-    "version":  "1.1.0",
+    "version":  "1.2.0",
     "type":  "module",
-    "description":  "A DSH skill plugin for e-commerce order analysis: refund-type classification, return-rate statistics, interception and refund-abuse loss accounting, and Markdown + Excel reports with per-order detail and a sampling verification sheet.",
+    "description":  "A DSH skill plugin for e-commerce order analysis: refund-type classification, return-rate statistics, interception and refund-abuse loss accounting, after-sales deep analysis with product warnings, and a single integrated Excel workbook (5 sheets, ~14 charts) plus monthly comparison and Chinese New Year window reports.",
     "keywords":  [
                      "dsh-plugin",
                      "dsh",
